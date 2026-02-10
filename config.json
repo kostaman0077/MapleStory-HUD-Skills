@@ -1,0 +1,44 @@
+{
+  "capture_fps": 30,
+  "brightness_threshold": 100,
+  "sidebar_position": "right",
+  "overlay_scale": 1.0,
+  "detection_mode": "brightness",
+  "template_dir": "templates",
+  "slots": [
+    {
+      "name": "Skill 1",
+      "x": 1144,
+      "y": 1149,
+      "w": 32,
+      "h": 36,
+      "enabled": true
+    },
+    {
+      "name": "Skill 2",
+      "x": 1213,
+      "y": 1152,
+      "w": 34,
+      "h": 30,
+      "enabled": true
+    },
+    {
+      "name": "Skill 3",
+      "x": 1249,
+      "y": 1152,
+      "w": 33,
+      "h": 30,
+      "enabled": true
+    },
+    {
+      "name": "Skill 4",
+      "x": 1353,
+      "y": 1183,
+      "w": 36,
+      "h": 36,
+      "enabled": true
+    }
+  ],
+  "window_x": 2050,
+  "window_y": 548
+}
