@@ -1,4 +1,4 @@
-# Skill Tracker Overlay
+![Animation](https://github.com/user-attachments/assets/59c26d75-3a22-4b54-bbb0-342edb99d42a)# Skill Tracker Overlay
 
 **A high-performance, customizable overlay for tracking skill cooldowns in any game.**
 
@@ -22,7 +22,8 @@ Skill Tracker is a lightweight desktop application that monitors specific region
 *   **Performance**: Optimized for minimal impact on your game's FPS.
 <img width="968" height="716" alt="image" src="https://github.com/user-attachments/assets/d9f697a6-aab8-47ed-8cc2-8c4caf62b717" />
 <img width="997" height="738" alt="image" src="https://github.com/user-attachments/assets/5f7c5dbd-0150-479c-9386-aca97bbc7b35" />
-https://github.com/user-attachments/assets/c3fbbe07-7fad-4b00-9b70-4fe20287e1d5
+
+![Animation](https://github.com/user-attachments/assets/c263c079-f53b-4c39-a38b-5581a77529ba)
 
 ---
 
