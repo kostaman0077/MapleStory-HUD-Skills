@@ -16,6 +16,11 @@ from typing import List, Optional, Dict
 
 import cv2
 import numpy as np
+import pytesseract
+from PIL import Image
+
+# Set tesseract cmd if needed, or assume it's in PATH
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 
 @dataclass
@@ -26,6 +31,8 @@ class SkillState:
     brightness: float
     match_score: Optional[float] = None
     image: Optional[np.ndarray] = None
+    cooldown_time: Optional[float] = None # OCR detected time
+    is_smart_detection: bool = False
 
 
 class SkillDetector:
@@ -60,6 +67,10 @@ class SkillDetector:
             if not self._templates:
                 print("[vision] No templates found — falling back to brightness mode.")
                 self.mode = "brightness"
+        
+        # Smart mode also uses templates for reference comparison
+        if mode == "smart":
+            self._load_templates(template_dir)
 
     def update_slots(self, slots: List[dict]) -> None:
         """Update the list of slots."""
@@ -80,9 +91,86 @@ class SkillDetector:
 
     def detect_one(self, name: str, crop: np.ndarray) -> SkillState:
         """Analyse a single slot crop."""
-        if self.mode == "template" and name in self._templates:
+        if self.mode == "smart":
+            return self._detect_smart(name, crop)
+        elif self.mode == "template" and name in self._templates:
             return self._detect_template(name, crop)
         return self._detect_brightness(name, crop)
+
+    def _detect_smart(self, name: str, crop: np.ndarray) -> SkillState:
+        """Use reference comparison + OCR for precise cooldown tracking."""
+        # 1. State Detection: Compare against reference "Available" image
+        on_cooldown = False
+        if name in self._templates:
+            ref_img = self._templates[name]
+            # Resize ref if needed
+            if ref_img.shape[:2] != crop.shape[:2]:
+                ref_img = cv2.resize(ref_img, (crop.shape[1], crop.shape[0]))
+                
+            # Compare brightness/saturation
+            # Hypothesis: Cooldown is Darker OR Desaturated
+            # Simple check: Mean brightness < Reference Brightness * 0.8
+            gray_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+            gray_ref = cv2.cvtColor(ref_img, cv2.COLOR_BGR2GRAY)
+            
+            bright_crop = np.mean(gray_crop)
+            bright_ref = np.mean(gray_ref)
+            
+            if bright_crop < bright_ref * 0.85:
+                on_cooldown = True
+        else:
+            # Fallback if no reference: simple threshold
+            gray_crop = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+            on_cooldown = np.mean(gray_crop) < self.threshold
+
+        cooldown_time = None
+        if on_cooldown:
+            # 2. OCR: Extract Yellow Numbers
+            cooldown_time = self._process_ocr(crop)
+
+        return SkillState(
+            name=name,
+            on_cooldown=on_cooldown,
+            brightness=0.0, # Not primary metric
+            image=crop,
+            cooldown_time=cooldown_time,
+            is_smart_detection=True
+        )
+
+    def _process_ocr(self, crop: np.ndarray) -> Optional[float]:
+        """Extract yellow numbers from crop using HSV masking and Tesseract."""
+        try:
+            hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+            
+            # Yellow Mask (Hue 20-40 approx for yellow)
+            # Adjust these ranges based on game screenshots!
+            # Yellow is usually around 30.
+            lower_yellow = np.array([15, 100, 100])
+            upper_yellow = np.array([45, 255, 255])
+            
+            mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+            
+            # Invert mask to get black text on white bg? 
+            # Actually tesseract likes black text on white usually.
+            # The mask gives White pixels where Yellow was, Black elsewhere.
+            # So we have White Text on Black BG.
+            # Let's Invert it -> Black Text on White BG.
+            mask_inv = cv2.bitwise_not(mask)
+            
+            # OCR Configuration
+            # --psm 7: Treat the image as a single text line.
+            # -c tessedit_char_whitelist=0123456789. : Only digits and dot
+            custom_config = r'--psm 7 -c tessedit_char_whitelist=0123456789'
+            
+            text = pytesseract.image_to_string(mask_inv, config=custom_config)
+            text = text.strip()
+            
+            if text:
+                return float(text)
+        except Exception:
+            pass # OCR failed or no text
+            
+        return None
 
     def _detect_brightness(self, name: str, crop: np.ndarray) -> SkillState:
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)

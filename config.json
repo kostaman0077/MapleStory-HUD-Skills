@@ -2,7 +2,7 @@
   "capture_fps": 30,
   "brightness_threshold": 100,
   "sidebar_position": "right",
-  "overlay_scale": 1.0,
+  "overlay_scale": 1.1,
   "detection_mode": "brightness",
   "template_dir": "templates",
   "orientation": "vertical",
@@ -10,37 +10,35 @@
   "slots": [
     {
       "name": "Skill 1",
-      "x": 1144,
-      "y": 1149,
-      "w": 32,
-      "h": 36,
-      "enabled": true
+      "x": 867,
+      "y": 715,
+      "w": 31,
+      "h": 32,
+      "enabled": true,
+      "overlay_x": 1379,
+      "overlay_y": 106
     },
     {
       "name": "Skill 2",
-      "x": 1213,
-      "y": 1152,
-      "w": 34,
-      "h": 30,
-      "enabled": true
+      "x": 867,
+      "y": 752,
+      "w": 31,
+      "h": 27,
+      "enabled": true,
+      "overlay_x": 1379,
+      "overlay_y": 199
     },
     {
       "name": "Skill 3",
-      "x": 1249,
-      "y": 1152,
-      "w": 33,
-      "h": 30,
-      "enabled": true
-    },
-    {
-      "name": "Skill 4",
-      "x": 1353,
-      "y": 1183,
-      "w": 36,
-      "h": 36,
-      "enabled": true
+      "x": 1111,
+      "y": 716,
+      "w": 30,
+      "h": 31,
+      "enabled": true,
+      "overlay_x": 1376,
+      "overlay_y": 290
     }
   ],
-  "window_x": 1409,
-  "window_y": 131
+  "window_x": 1363,
+  "window_y": -7
 }

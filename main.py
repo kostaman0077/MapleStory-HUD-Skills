@@ -20,8 +20,8 @@ from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
 
 from capture import ScreenCapture
-from config import load_config
-from overlay import SidebarOverlay
+from config import load_config, save_config
+from overlay import OverlayManager
 from vision import SkillDetector, SkillState
 from calibration_gui import SettingsWindow
 
@@ -137,31 +137,19 @@ def main() -> None:
     )
 
     # Windows
-    # 1. Overlay
-    overlay = SidebarOverlay(slots, config=cfg)
+    # 1. Overlay Manager
+    # We pass the full config, but slots are inside it.
+    # Ensure we pass the LIVE slot objects so updates propagate.
+    overlay = OverlayManager(cfg["slots"], cfg)
     
-    # Restore position if saved
-    if "window_x" in cfg and "window_y" in cfg:
-        overlay.move(cfg["window_x"], cfg["window_y"])
+    # Connect Manager Signals
+    overlay.open_settings.connect(lambda: settings.show())
+    overlay.request_exit.connect(app.quit)
+    # When windows move, we might want to save config immediately or just rely on exit?
+    # Let's save on move for safety.
+    overlay.config_changed.connect(lambda: save_config(args.config, cfg))
     
-    # --- VISIBILITY CHECK ---
-    # Ensure overlay is on-screen. If not, reset to default.
-    # We check if the window geometry intersects with any screen's available geometry.
-    # Since it's a frameless tool window, we might need to be careful.
-    # Simple check: is the top-left corner within any screen?
-    overlay_visible = False
-    for screen in QApplication.screens():
-        if screen.availableGeometry().contains(overlay.geometry()):
-            overlay_visible = True
-            break
-    
-    if not overlay_visible:
-        print("[main] Overlay detected off-screen or invalid. Resetting position.")
-        # Reset to top-right of primary screen
-        primary = QApplication.primaryScreen().availableGeometry()
-        # Default to right side
-        overlay.move(primary.width() - overlay.width() - 50, 100)
-
+    # Show windows (OverlayManager proxy handles this for all slots)
     overlay.show()
 
     # --- SYSTEM TRAY ---
@@ -197,19 +185,18 @@ def main() -> None:
     )
 
     # Connections
-    # Overlay -> Settings
-    overlay.open_settings.connect(settings.show)
+    # Overlay -> Settings (handled by overlay.open_settings.connect above)
     
     # Settings -> Overlay & Worker
-    settings.config_changed.connect(lambda c: overlay.update_slots(c.get("slots", [])))
+    settings.config_changed.connect(overlay.update_config) # OverlayManager takes full config
     settings.config_changed.connect(worker.update_config)
     
     settings.overlay_scale_changed.connect(overlay.set_scale)
-    settings.orientation_changed.connect(overlay.set_orientation)
     settings.locked_changed.connect(overlay.set_locked)
+    settings.request_exit.connect(app.quit)
     
     # Sync resize back to settings
-    overlay.scale_changed_by_resize.connect(settings.update_scale_from_overlay)
+    # overlay.scale_changed_by_resize.connect(settings.update_scale_from_overlay)
 
     # Tray Connections
     action_show.triggered.connect(overlay.show)

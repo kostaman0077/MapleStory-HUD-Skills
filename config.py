@@ -12,7 +12,7 @@ DEFAULT_CONFIG = {
     "template_dir": "templates",
     "orientation": "vertical",  # "vertical" or "horizontal"
     "locked": False,
-    "slots": [],  # List of dicts: {name, x, y, w, h, enabled}
+    "slots": [],  # List of dicts: {name, x, y, w, h, enabled, default_cooldown}
 }
 
 

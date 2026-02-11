@@ -17,7 +17,7 @@ from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QScreen, QCursor
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
     QListWidget, QListWidgetItem, QLabel, QMessageBox, QMainWindow, QSlider,
-    QComboBox, QCheckBox
+    QComboBox, QCheckBox, QInputDialog
 )
 
 from config import load_config, save_config
@@ -107,8 +107,8 @@ class SettingsWindow(QMainWindow):
     # Signals to notify overlay of changes
     config_changed = pyqtSignal(dict)  # Emits full config
     overlay_scale_changed = pyqtSignal(float)
-    orientation_changed = pyqtSignal(str)
     locked_changed = pyqtSignal(bool)
+    request_exit = pyqtSignal()
 
     def __init__(self, config_path: str = "config.json") -> None:
         super().__init__()
@@ -131,11 +131,13 @@ class SettingsWindow(QMainWindow):
         btn_layout = QHBoxLayout()
         self.btn_add = QPushButton("Add New")
         self.btn_edit = QPushButton("Edit Selected")
+        self.btn_capture_ref = QPushButton("Capture Ref")
         self.btn_remove = QPushButton("Remove")
         self.btn_clear = QPushButton("Clear All")
         
         btn_layout.addWidget(self.btn_add)
         btn_layout.addWidget(self.btn_edit)
+        btn_layout.addWidget(self.btn_capture_ref)
         btn_layout.addWidget(self.btn_remove)
         btn_layout.addWidget(self.btn_clear)
         layout.addLayout(btn_layout)
@@ -156,14 +158,7 @@ class SettingsWindow(QMainWindow):
         scale_layout.addWidget(self.lbl_scale_val)
         layout.addLayout(scale_layout)
         
-        # Orientation
-        orient_layout = QHBoxLayout()
-        orient_layout.addWidget(QLabel("Orientation:"))
-        self.combo_orient = QComboBox()
-        self.combo_orient.addItems(["vertical", "horizontal"])
-        self.combo_orient.setCurrentText(self.config.get("orientation", "vertical"))
-        orient_layout.addWidget(self.combo_orient)
-        layout.addLayout(orient_layout)
+        # Orientation removed
 
         # Lock Overlay
         self.chk_locked = QCheckBox("Lock Overlay (Click-through)")
@@ -172,25 +167,28 @@ class SettingsWindow(QMainWindow):
 
         # --- Footer ---
         layout.addStretch()
+        footer_layout = QHBoxLayout()
         self.btn_save = QPushButton("Save Config")
-        layout.addWidget(self.btn_save)
-
+        self.btn_exit_app = QPushButton("Exit Application")
+        self.btn_exit_app.setStyleSheet("background-color: #ffcccc; color: red;") # Slight warning color
+        
+        footer_layout.addWidget(self.btn_save)
+        footer_layout.addWidget(self.btn_exit_app)
+        layout.addLayout(footer_layout)
+        
         # Signals
         self.btn_add.clicked.connect(self.add_skill_flow)
         self.btn_edit.clicked.connect(self.edit_skill_flow)
+        self.btn_capture_ref.clicked.connect(self.capture_reference_flow)
         self.btn_remove.clicked.connect(self.remove_slot)
         self.btn_clear.clicked.connect(self.clear_all_slots)
         self.btn_save.clicked.connect(self.save_config_file)
+        self.btn_exit_app.clicked.connect(self.request_exit.emit)
         
         self.slider_scale.valueChanged.connect(self.on_scale_changed)
-        self.combo_orient.currentTextChanged.connect(self.on_orientation_changed)
         self.chk_locked.stateChanged.connect(self.on_locked_changed)
         
         self.refresh_list()
-
-    def on_orientation_changed(self, text: str) -> None:
-        self.config["orientation"] = text
-        self.orientation_changed.emit(text)
 
     def on_locked_changed(self, state: int) -> None:
         locked = (state == Qt.CheckState.Checked.value)
@@ -211,7 +209,8 @@ class SettingsWindow(QMainWindow):
         for i, slot in enumerate(self.config.get("slots", [])):
             name = slot.get("name", f"Skill {i+1}")
             coords = f"x={slot['x']},y={slot['y']} {slot['w']}x{slot['h']}"
-            item = QListWidgetItem(f"{name}  [{coords}]")
+            cd = f"CD:{slot.get('default_cooldown', 0)}s"
+            item = QListWidgetItem(f"{name}  [{coords}]  [{cd}]")
             item.setData(Qt.ItemDataRole.UserRole, i)
             self.slot_list.addItem(item)
         
@@ -270,6 +269,57 @@ class SettingsWindow(QMainWindow):
             slots[self._editing_row]["w"] = rect.width()
             slots[self._editing_row]["h"] = rect.height()
             self.config["slots"] = slots
+            self.refresh_list()
+            
+    def capture_reference_flow(self) -> None:
+        """Capture the current screen content of the selected slot as reference."""
+        row = self.slot_list.currentRow()
+        if row < 0:
+            return
+        
+        slots = self.config.get("slots", [])
+        if not (0 <= row < len(slots)):
+            return
+
+        slot = slots[row]
+        
+        # Ask for default cooldown while we are at it
+        text, ok = QInputDialog.getText(self, "Default Cooldown", "Enter default cooldown in seconds (e.g. 30):", text=str(slot.get("default_cooldown", 0)))
+        if ok:
+            try:
+                val = float(text)
+                slot["default_cooldown"] = val
+            except ValueError:
+                pass
+        
+        # Capture logic
+        import cv2
+        import numpy as np
+        # Ideally we invoke the capture engine, but simpler to just grab screen here using Qt or mss
+        # Use mss for consistency if possible, or QApplication.primaryScreen().grabWindow
+        # We need absolute screen coordinates.
+        screen = QApplication.primaryScreen()
+        if screen:
+            pix = screen.grabWindow(0, slot["x"], slot["y"], slot["w"], slot["h"])
+            # Save to template dir
+            template_dir = self.config.get("template_dir", "templates")
+            import os
+            os.makedirs(template_dir, exist_ok=True)
+            
+            # Convert to cv2 image to save
+            qimg = pix.toImage()
+            # RGB to BGR logic... simpler to save as png via pix.save
+            name = slot["name"]
+            safe_name = "".join(x for x in name if x.isalnum() or x in " _-")
+            path = os.path.join(template_dir, f"{safe_name}.png")
+            pix.save(path, "PNG")
+            
+            QMessageBox.information(self, "Saved", f"Reference saved for {name}!\nCooldown set to {slot.get('default_cooldown')}s")
+            
+            # Switch mode to smart if not already?
+            if self.config.get("detection_mode") != "smart":
+                self.config["detection_mode"] = "smart"
+            
             self.refresh_list()
 
     def remove_slot(self) -> None:
