@@ -1,4 +1,4 @@
-![Animation](https://github.com/user-attachments/assets/59c26d75-3a22-4b54-bbb0-342edb99d42a)# Skill Tracker Overlay
+# Skill Tracker Overlay
 
 **A high-performance, customizable overlay for tracking skill cooldowns in any game.**
 
