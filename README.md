@@ -22,6 +22,7 @@ Skill Tracker is a lightweight desktop application that monitors specific region
 *   **Performance**: Optimized for minimal impact on your game's FPS.
 <img width="968" height="716" alt="image" src="https://github.com/user-attachments/assets/d9f697a6-aab8-47ed-8cc2-8c4caf62b717" />
 <img width="997" height="738" alt="image" src="https://github.com/user-attachments/assets/5f7c5dbd-0150-479c-9386-aca97bbc7b35" />
+![Animation](https://github.com/user-attachments/assets/7d77d80a-e623-41d6-9d80-adc55f7846fa)
 
 ---
 
