@@ -5,6 +5,8 @@
   "overlay_scale": 1.0,
   "detection_mode": "brightness",
   "template_dir": "templates",
+  "orientation": "vertical",
+  "locked": false,
   "slots": [
     {
       "name": "Skill 1",
@@ -39,6 +41,6 @@
       "enabled": true
     }
   ],
-  "window_x": 2050,
-  "window_y": 548
+  "window_x": 1409,
+  "window_y": 131
 }

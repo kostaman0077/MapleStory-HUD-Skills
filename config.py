@@ -10,6 +10,8 @@ DEFAULT_CONFIG = {
     "overlay_scale": 1.0,
     "detection_mode": "brightness",
     "template_dir": "templates",
+    "orientation": "vertical",  # "vertical" or "horizontal"
+    "locked": False,
     "slots": [],  # List of dicts: {name, x, y, w, h, enabled}
 }
 

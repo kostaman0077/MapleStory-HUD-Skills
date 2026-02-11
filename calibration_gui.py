@@ -16,7 +16,8 @@ from PyQt6.QtCore import Qt, QRect, QPoint, pyqtSignal
 from PyQt6.QtGui import QColor, QPainter, QPen, QBrush, QScreen, QCursor
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QListWidget, QListWidgetItem, QLabel, QMessageBox, QMainWindow, QSlider
+    QListWidget, QListWidgetItem, QLabel, QMessageBox, QMainWindow, QSlider,
+    QComboBox, QCheckBox
 )
 
 from config import load_config, save_config
@@ -106,6 +107,8 @@ class SettingsWindow(QMainWindow):
     # Signals to notify overlay of changes
     config_changed = pyqtSignal(dict)  # Emits full config
     overlay_scale_changed = pyqtSignal(float)
+    orientation_changed = pyqtSignal(str)
+    locked_changed = pyqtSignal(bool)
 
     def __init__(self, config_path: str = "config.json") -> None:
         super().__init__()
@@ -152,6 +155,20 @@ class SettingsWindow(QMainWindow):
         self.lbl_scale_val = QLabel(f"{current_scale:.1f}x")
         scale_layout.addWidget(self.lbl_scale_val)
         layout.addLayout(scale_layout)
+        
+        # Orientation
+        orient_layout = QHBoxLayout()
+        orient_layout.addWidget(QLabel("Orientation:"))
+        self.combo_orient = QComboBox()
+        self.combo_orient.addItems(["vertical", "horizontal"])
+        self.combo_orient.setCurrentText(self.config.get("orientation", "vertical"))
+        orient_layout.addWidget(self.combo_orient)
+        layout.addLayout(orient_layout)
+
+        # Lock Overlay
+        self.chk_locked = QCheckBox("Lock Overlay (Click-through)")
+        self.chk_locked.setChecked(self.config.get("locked", False))
+        layout.addWidget(self.chk_locked)
 
         # --- Footer ---
         layout.addStretch()
@@ -166,8 +183,28 @@ class SettingsWindow(QMainWindow):
         self.btn_save.clicked.connect(self.save_config_file)
         
         self.slider_scale.valueChanged.connect(self.on_scale_changed)
+        self.combo_orient.currentTextChanged.connect(self.on_orientation_changed)
+        self.chk_locked.stateChanged.connect(self.on_locked_changed)
         
         self.refresh_list()
+
+    def on_orientation_changed(self, text: str) -> None:
+        self.config["orientation"] = text
+        self.orientation_changed.emit(text)
+
+    def on_locked_changed(self, state: int) -> None:
+        locked = (state == Qt.CheckState.Checked.value)
+        self.config["locked"] = locked
+        self.locked_changed.emit(locked)
+
+    def update_scale_from_overlay(self, scale: float) -> None:
+        """Called when overlay is resized via mouse."""
+        # Block signals to prevent loop
+        self.slider_scale.blockSignals(True)
+        self.slider_scale.setValue(int(scale * 10))
+        self.lbl_scale_val.setText(f"{scale:.1f}x")
+        self.slider_scale.blockSignals(False)
+        self.config["overlay_scale"] = scale
 
     def refresh_list(self) -> None:
         self.slot_list.clear()
